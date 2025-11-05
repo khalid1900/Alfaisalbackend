@@ -1,6 +1,3 @@
-import dotenv from "dotenv";
-dotenv.config();
-
 import express from "express";
 import mongoose from "mongoose";
 import { adminRoutes, eventsRoutes } from "./routes/routes.js";
@@ -9,6 +6,9 @@ import errorHandler from "./middleware/errorHandler.js";
 import cors from "cors";
 
 const PORT = process.env.PORT || 5009;
+
+// ✅ Define MongoDB connection string here directly
+const MONGO_URI = "mongodb+srv://khankkhalid25:YhMIHYskJsqg2l9x@cluster0.69m2s.mongodb.net/myDB?retryWrites=true&w=majority";
 
 const app = express();
 
@@ -21,7 +21,7 @@ app.use(cors());
 // Database Connection
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
+    await mongoose.connect(MONGO_URI, {
       serverSelectionTimeoutMS: 30000,
       useNewUrlParser: true,
       useUnifiedTopology: true,
