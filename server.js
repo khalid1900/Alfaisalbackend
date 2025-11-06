@@ -7,7 +7,7 @@ import cors from "cors";
 
 const PORT = process.env.PORT || 5009;
 
-// ✅ Define MongoDB connection string here directly
+// ✅ MongoDB connection string defined directly
 const MONGO_URI = "mongodb+srv://khankkhalid25:YhMIHYskJsqg2l9x@cluster0.69m2s.mongodb.net/myDB?retryWrites=true&w=majority";
 
 const app = express();
@@ -18,7 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(multer().any());
 app.use(cors());
 
-// Database Connection
+// ✅ Database Connection Function
 const connectDB = async () => {
   try {
     await mongoose.connect(MONGO_URI, {
@@ -26,12 +26,23 @@ const connectDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log(`✅ MongoDB connected!`);
+    console.log("✅ MongoDB connected!");
   } catch (error) {
-    console.log(`❌ MongoDB connection error:`, error);
+    console.error("❌ MongoDB connection error:", error.message);
     process.exit(1);
   }
 };
+
+// ✅ Connect to DB first, then start server
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🚀 Server listening on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("❌ Failed to start server due to DB error:", err);
+  });
 
 // Routes
 app.get("/", (_, res) => res.send("API is running"));
@@ -43,9 +54,3 @@ app.use((req, res) => res.status(404).send("Route not found"));
 
 // Error Handler
 app.use(errorHandler);
-
-// Start Server
-app.listen(PORT, async () => {
-  console.log(`🚀 Server listening on port ${PORT}`);
-  await connectDB();
-});
