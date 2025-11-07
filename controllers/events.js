@@ -1,3 +1,4 @@
+import { uploadFile } from "../helper/aws.js";
 import Event from "../models/event.js";
 import EventAttendee from "../models/eventAttendee.js";
 import nodemailer from "nodemailer";
@@ -27,7 +28,72 @@ const sendEventEmail = async (recipientEmail, subject, htmlContent) => {
 };
 
 // ========== CREATE/POST EVENT ==========
-export const postEvent = async (req, res, next) => {
+// export const postEvent = async (req, res, next) => {
+//   try {
+//     const {
+//       title,
+//       category,
+//       date,
+//       time,
+//       endTime,
+//       location,
+//       address,
+//       image,
+//       speakerImage,
+//       description,
+//       details,
+//       sponsor,
+//       audience,
+//       speaker,
+//       subject,
+//       tags,
+//       inPerson,
+//       draft,
+//     } = req.body;
+
+//     if (!title || !category || !date || !location || !description || !details) {
+//       return res.status(400).json({
+//         message: "Please provide all required fields: title, category, date, location, description, details",
+//       });
+//     }
+
+//     const newEvent = new Event({
+//       title,
+//       category,
+//       date: new Date(date),
+//       time,
+//       endTime,
+//       location,
+//       address,
+//       image,
+//       speakerImage,
+//       description,
+//       details,
+//       sponsor,
+//       audience,
+//       speaker,
+//       subject,
+//       tags: Array.isArray(tags) ? tags : [],
+//       inPerson: inPerson !== undefined ? inPerson : true,
+//       draft: draft !== undefined ? draft : false,
+//       createdBy: req.user._id, // From auth middleware
+//       status: "pending",
+//     });
+
+//     await newEvent.save();
+//     await newEvent.populate("createdBy", "name email");
+
+//     return res.status(201).json({
+//       status: "Event created successfully",
+//       data: newEvent,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+
+export const postEvent = async (req, res) => {
   try {
     const {
       title,
@@ -37,8 +103,6 @@ export const postEvent = async (req, res, next) => {
       endTime,
       location,
       address,
-      image,
-      speakerImage,
       description,
       details,
       sponsor,
@@ -52,8 +116,20 @@ export const postEvent = async (req, res, next) => {
 
     if (!title || !category || !date || !location || !description || !details) {
       return res.status(400).json({
-        message: "Please provide all required fields: title, category, date, location, description, details",
+        message:
+          "Please provide all required fields: title, category, date, location, description, details",
       });
+    }
+
+    // handle files (if any)
+    let imageUrl = null;
+    let speakerImageUrl = null;
+    if (req.files && req.files.length > 0) {
+      const imageFile = req.files.find((f) => f.fieldname === "image");
+      const speakerFile = req.files.find((f) => f.fieldname === "speakerImage");
+
+      if (imageFile) imageUrl = await uploadFile(imageFile);
+      if (speakerFile) speakerImageUrl = await uploadFile(speakerFile);
     }
 
     const newEvent = new Event({
@@ -64,32 +140,29 @@ export const postEvent = async (req, res, next) => {
       endTime,
       location,
       address,
-      image,
-      speakerImage,
+      image: imageUrl,
+      speakerImage: speakerImageUrl,
       description,
       details,
       sponsor,
       audience,
       speaker,
       subject,
-      tags: Array.isArray(tags) ? tags : [],
-      inPerson: inPerson !== undefined ? inPerson : true,
-      draft: draft !== undefined ? draft : false,
-      createdBy: req.user._id, // From auth middleware
+      tags: Array.isArray(tags) ? tags : tags ? tags.split(",") : [],
+      inPerson: inPerson === "true" || inPerson === true,
+      draft: draft === "true" || draft === true,
+      createdBy: req.user._id,
       status: "pending",
     });
 
     await newEvent.save();
-    await newEvent.populate("createdBy", "name email");
-
-    return res.status(201).json({
-      status: "Event created successfully",
-      data: newEvent,
-    });
+    res.status(201).json({ message: "Event created successfully", data: newEvent });
   } catch (error) {
-    next(error);
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 // ========== VIEW SINGLE EVENT ==========
 export const viewEvent = async (req, res, next) => {
@@ -142,30 +215,100 @@ export const deleteEvent = async (req, res, next) => {
 };
 
 // ========== EDIT/UPDATE EVENT ==========
+// export const editEvent = async (req, res, next) => {
+//   const { eventId } = req.params;
+//   const {
+//     title,
+//     category,
+//     date,
+//     time,
+//     endTime,
+//     location,
+//     address,
+//     image,
+//     speakerImage,
+//     description,
+//     details,
+//     sponsor,
+//     audience,
+//     speaker,
+//     subject,
+//     tags,
+//     inPerson,
+//     draft,
+//   } = req.body;
+
+//   try {
+//     const updateData = {};
+
+//     if (title) updateData.title = title;
+//     if (category) updateData.category = category;
+//     if (date) updateData.date = new Date(date);
+//     if (time) updateData.time = time;
+//     if (endTime) updateData.endTime = endTime;
+//     if (location) updateData.location = location;
+//     if (address) updateData.address = address;
+//     if (image !== undefined) updateData.image = image;
+//     if (speakerImage !== undefined) updateData.speakerImage = speakerImage;
+//     if (description) updateData.description = description;
+//     if (details) updateData.details = details;
+//     if (sponsor !== undefined) updateData.sponsor = sponsor;
+//     if (audience) updateData.audience = audience;
+//     if (speaker !== undefined) updateData.speaker = speaker;
+//     if (subject) updateData.subject = subject;
+//     if (tags) updateData.tags = Array.isArray(tags) ? tags : [];
+//     if (inPerson !== undefined) updateData.inPerson = inPerson;
+//     if (draft !== undefined) updateData.draft = draft;
+
+//     const updatedEvent = await Event.findOneAndUpdate(
+//       { _id: eventId },
+//       updateData,
+//       { new: true, runValidators: true }
+//     )
+//       .populate("createdBy", "name email")
+//       .populate("approvedBy", "name email");
+
+//     if (!updatedEvent) {
+//       return res.status(404).json({ error: "Event not found" });
+//     }
+
+//     return res.status(200).json({
+//       message: "Event updated successfully",
+//       data: updatedEvent,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+
 export const editEvent = async (req, res, next) => {
   const { eventId } = req.params;
-  const {
-    title,
-    category,
-    date,
-    time,
-    endTime,
-    location,
-    address,
-    image,
-    speakerImage,
-    description,
-    details,
-    sponsor,
-    audience,
-    speaker,
-    subject,
-    tags,
-    inPerson,
-    draft,
-  } = req.body;
 
   try {
+    // 1️⃣ Parse body values
+    const {
+      title,
+      category,
+      date,
+      time,
+      endTime,
+      location,
+      address,
+      image,
+      speakerImage,
+      description,
+      details,
+      sponsor,
+      audience,
+      speaker,
+      subject,
+      tags,
+      inPerson,
+      draft,
+    } = req.body;
+
+    // 2️⃣ Start building update object
     const updateData = {};
 
     if (title) updateData.title = title;
@@ -175,18 +318,51 @@ export const editEvent = async (req, res, next) => {
     if (endTime) updateData.endTime = endTime;
     if (location) updateData.location = location;
     if (address) updateData.address = address;
-    if (image !== undefined) updateData.image = image;
-    if (speakerImage !== undefined) updateData.speakerImage = speakerImage;
     if (description) updateData.description = description;
     if (details) updateData.details = details;
     if (sponsor !== undefined) updateData.sponsor = sponsor;
     if (audience) updateData.audience = audience;
     if (speaker !== undefined) updateData.speaker = speaker;
     if (subject) updateData.subject = subject;
-    if (tags) updateData.tags = Array.isArray(tags) ? tags : [];
-    if (inPerson !== undefined) updateData.inPerson = inPerson;
-    if (draft !== undefined) updateData.draft = draft;
+    if (inPerson !== undefined) updateData.inPerson = inPerson === "true" || inPerson === true;
+    if (draft !== undefined) updateData.draft = draft === "true" || draft === true;
 
+    // 3️⃣ Tags handling
+    if (tags) {
+      if (Array.isArray(tags)) updateData.tags = tags;
+      else if (typeof tags === "string") updateData.tags = tags.split(",").map((t) => t.trim());
+    }
+
+    // 4️⃣ Handle images
+    // Case 1: Base64 or URL passed in body (from frontend JSON)
+    if (image && typeof image === "string" && image.startsWith("data:image")) {
+      // Optionally upload to S3 if you want, else just store base64
+      // const uploadedImage = await uploadToS3(image);
+      updateData.image = image;
+    }
+
+    if (speakerImage && typeof speakerImage === "string" && speakerImage.startsWith("data:image")) {
+      // const uploadedSpeakerImage = await uploadToS3(speakerImage);
+      updateData.speakerImage = speakerImage;
+    }
+
+    // Case 2: Actual files uploaded via multipart/form-data
+    if (req.files && req.files.length > 0) {
+      const imageFile = req.files.find((f) => f.fieldname === "image");
+      const speakerFile = req.files.find((f) => f.fieldname === "speakerImage");
+
+      if (imageFile) {
+        const uploadedImage = await uploadFile(imageFile);
+        updateData.image = uploadedImage;
+      }
+
+      if (speakerFile) {
+        const uploadedSpeakerImage = await uploadFile(speakerFile);
+        updateData.speakerImage = uploadedSpeakerImage;
+      }
+    }
+
+    // 5️⃣ Update in DB
     const updatedEvent = await Event.findOneAndUpdate(
       { _id: eventId },
       updateData,
@@ -199,14 +375,17 @@ export const editEvent = async (req, res, next) => {
       return res.status(404).json({ error: "Event not found" });
     }
 
-    return res.status(200).json({
+    // 6️⃣ Response
+    res.status(200).json({
       message: "Event updated successfully",
       data: updatedEvent,
     });
   } catch (error) {
-    next(error);
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 // ========== GET DRAFT EVENTS ==========
 export const getDraftedEvents = async (req, res, next) => {
