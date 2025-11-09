@@ -1,6 +1,5 @@
 import aws from "aws-sdk";
 
-// ✅ Always declare variables with const
 const S3_BUCKET = "khalidkhan";
 const S3_ACCESKEY_ID = "AKIATCOHKQAF3AOCBT7T";
 const S3_SECRET_KEY = "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";

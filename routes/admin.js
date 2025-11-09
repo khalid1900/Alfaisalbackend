@@ -7,7 +7,7 @@ import {
   adminLogin,
   createAdmin,
   getAdminProfile,
-  updateAdminProfile,
+
   changePassword,
   getAllAdmins,
   getAdminById,
@@ -16,6 +16,7 @@ import {
   deactivateAdmin,
   activateAdmin,
   deleteAdmin,
+  updateAdminById,
 } from "../controllers/admin.js";
 
 const router = express.Router();
@@ -26,7 +27,7 @@ router.post("/create", createAdmin);
 
 // ========== PRIVATE ROUTES (Authenticated) ==========
 router.get("/profile", requireSignIn, getAdminProfile);
-router.put("/profile", requireSignIn, updateAdminProfile);
+router.put("/:adminId", requireSignIn, updateAdminById);
 router.put("/password", requireSignIn, changePassword);
 
 // ========== SUPER ADMIN ROUTES ==========

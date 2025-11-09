@@ -1,4 +1,5 @@
 // ========== controllers/admin.js ==========
+import bcrypt from "bcryptjs";
 import Admin from "../models/admin.js";
 import { createJwtToken, verifyToken } from "../utils/token.js"; // ✅ ADD THIS IMPORT
 
@@ -113,35 +114,46 @@ export const getAdminProfile = async (req, res, next) => {
 };
 
 // ========== UPDATE ADMIN PROFILE ==========
-export const updateAdminProfile = async (req, res, next) => {
+export const updateAdminById = async (req, res, next) => {
   try {
-    const { name, email } = req.body;
+    const adminId = req.params.adminId; // matches your route
+    const { name, email, password } = req.body;
 
     const updateData = {};
+
     if (name) updateData.name = name;
+
     if (email) {
-      const existingAdmin = await Admin.findOne({ email, _id: { $ne: req.user._id } });
+      const existingAdmin = await Admin.findOne({ email, _id: { $ne: adminId } });
       if (existingAdmin) {
         return res.status(400).json({ message: "Email already taken" });
       }
       updateData.email = email;
     }
 
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      updateData.password = await bcrypt.hash(password, salt);
+    }
+
     const updatedAdmin = await Admin.findByIdAndUpdate(
-      req.user._id,
+      adminId,
       updateData,
       { new: true, runValidators: true }
-    );
+    ).select("-password");
+
+    if (!updatedAdmin) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
 
     return res.status(200).json({
-      message: "Profile updated successfully",
+      message: "Admin updated successfully",
       data: updatedAdmin,
     });
   } catch (error) {
     next(error);
   }
 };
-
 // ========== CHANGE PASSWORD ==========
 export const changePassword = async (req, res, next) => {
   try {
